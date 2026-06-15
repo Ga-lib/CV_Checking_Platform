@@ -22,7 +22,7 @@ function Candidate() {
     }
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://cv-checking-platform.onrender.com'
-      const response = await axios.post(`${apiUrl}/analyse`, formData, {
+      const response = await axios.post('https://onrender.com', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       setResult(response.data.analysis)
