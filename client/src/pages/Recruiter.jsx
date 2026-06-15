@@ -21,7 +21,7 @@ function Recruiter() {
     Array.from(files).forEach(file => formData.append('cvs', file))
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://cv-checking-platform.onrender.com'
-      const response = await axios.post('https://onrender.com', formData, {
+      const response = await axios.post(`${apiUrl}/api/recruiter`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       setResults(response.data.results)

@@ -3,30 +3,32 @@ import axios from 'axios'
 import Navbar from '../components/Navbar'
 import { Link } from 'react-router-dom'
 
-function Recruiter() {
+function Candidate() {
   const [jobDescription, setJobDescription] = useState('')
-  const [files, setFiles] = useState([])
+  const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState([])
+  const [analysis, setAnalysis] = useState(null)
   const [error, setError] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
 
   const handleSubmit = async () => {
-    if (!jobDescription.trim()) return setError('Please enter a job description.')
-    if (files.length === 0) return setError('Please upload at least one CV.')
+    if (!file) return setError('Please upload your CV.')
     setLoading(true)
     setError(null)
     const formData = new FormData()
-    formData.append('jobDescription', jobDescription)
-    Array.from(files).forEach(file => formData.append('cvs', file))
+    formData.append('cv', file)
+    if (jobDescription.trim()) {
+      formData.append('jobDescription', jobDescription)
+    }
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://cv-checking-platform.onrender.com'
-      const response = await axios.post(`${apiUrl}/api/recruiter`, formData, {
+      const response = await axios.post(`${apiUrl}/api/analyse`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      setResults(response.data.results)
+      setAnalysis(response.data.analysis)
     } catch (err) {
-      const message = err.response?.data?.error || 'Ranking failed. Please check if the server is running.'
+      const message = err.response?.data?.error || 'Analysis failed. Please check if the server is running.'
       setError(message)
     } finally {
       setLoading(false)
@@ -44,136 +46,147 @@ function Recruiter() {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setFiles(e.dataTransfer.files)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0])
     }
   }
 
-  const exportCSV = () => {
-    if (results.length === 0) return
-    const headers = ['Rank', 'Filename', 'Match Score', 'Reasoning', 'Matching Skills', 'Missing Skills']
-    const rows = results.map((c, i) => [
-      i + 1,
-      c.filename,
-      `${c.match_score}%`,
-      `"${c.reasoning.replace(/"/g, '""')}"`,
-      `"${c.matching_skills.join(', ')}"`,
-      `"${c.missing_skills.join(', ')}"`
-    ])
-    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'candidate_rankings.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const getScoreColor = (score) => {
+    if (score >= 80) return 'var(--success)'
+    if (score >= 50) return 'var(--warning)'
+    return 'var(--danger)'
   }
-
-  const scoreColor = (s) => s >= 75 ? 'var(--success)' : s >= 50 ? 'var(--warning)' : 'var(--danger)'
 
   return (
     <>
       <Navbar />
       <div className="page animate-fade">
-
         <Link to="/" className="back-link">← Back to Home</Link>
 
-        <div className="section-label">Recruiter Tool</div>
-        <h1 className="page-title">Candidate Ranking</h1>
-        <p className="page-subtitle">Paste a job description and upload multiple CVs to get AI-ranked candidates with transparent reasoning.</p>
+        <div className="section-label">Candidate Tool</div>
+        <h1 className="page-title">CV Analysis & ATS Score</h1>
+        <p className="page-subtitle">Upload your CV and optionally a job description to see how you rank and get AI-powered improvement tips.</p>
 
         <div className="card-grid-2" style={{ marginBottom: '32px', alignItems: 'start' }}>
-          {/* Step 1 */}
           <div className="card animate-up">
             <div className="section-label">Step 1</div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '14px' }}>Job Description</h3>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '14px' }}>Target Job Description (Optional)</h3>
             <textarea
               className="textarea"
               rows={8}
-              placeholder="Paste the full job description here..."
+              placeholder="Paste the job description you're applying for to get tailored feedback..."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
             />
           </div>
 
-          {/* Step 2 */}
           <div className="card animate-up" style={{ animationDelay: '0.1s' }}>
             <div className="section-label">Step 2</div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '14px' }}>Upload Candidate CVs</h3>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '14px' }}>Upload Your CV</h3>
             <div 
               className={`upload-zone ${isDragging ? 'drag-active' : ''}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              style={{ padding: '30px' }}
             >
-              <div className="upload-zone-icon">📂</div>
-              <p>Drag & drop multiple PDFs here</p>
-              <input type="file" accept=".pdf" multiple onChange={(e) => setFiles(e.target.files)} />
-              {files.length > 0 && (
-                <div className="upload-selected">✅ {files.length} CVs selected</div>
+              <div className="upload-zone-icon">📄</div>
+              <p>Drag & drop your PDF here</p>
+              <input type="file" accept=".pdf" onChange={(e) => setFile(e.target.files[0])} />
+              {file && (
+                <div className="upload-selected">✅ {file.name}</div>
               )}
             </div>
             <button className="btn btn-primary btn-lg" onClick={handleSubmit} disabled={loading} style={{ width: '100%' }}>
-              {loading ? <><span className="spinner" />Ranking...</> : '🏆 Rank Candidates →'}
+              {loading ? <><span className="spinner" />Analysing...</> : '🚀 Analyse My CV →'}
             </button>
           </div>
         </div>
 
         {error && <div className="alert alert-error animate-up">❌ {error}</div>}
 
-        {/* Results */}
-        {results.length > 0 && (
+        {analysis && (
           <div className="animate-up">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <div>
-                <div className="section-label">Ranking Results</div>
-                <h2 style={{ fontSize: '24px', fontWeight: '800' }}>{results.length} Candidates Scored</h2>
+            <div className="card-grid-2" style={{ marginBottom: '24px' }}>
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="gauge-container">
+                  <svg className="gauge-svg" viewBox="0 0 100 60">
+                    <path className="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
+                    <path 
+                      className="gauge-fill" 
+                      d="M 10 50 A 40 40 0 0 1 90 50" 
+                      style={{ 
+                        stroke: getScoreColor(analysis.ats_score),
+                        strokeDasharray: `${(analysis.ats_score / 100) * 126}, 126` 
+                      }} 
+                    />
+                  </svg>
+                  <div className="gauge-text">
+                    <span className="gauge-value">{analysis.ats_score}</span>
+                    <span className="gauge-label">ATS Score</span>
+                  </div>
+                </div>
               </div>
-              <button className="btn btn-outline btn-sm" onClick={exportCSV}>📊 Export CSV</button>
+
+              <div className="card">
+                <div className="section-label">Overall Summary</div>
+                <p style={{ fontSize: '15px', lineHeight: '1.7', color: 'var(--text-muted)' }}>{analysis.overall_summary}</p>
+                {analysis.job_match_score !== undefined && (
+                  <div style={{ marginTop: '20px', padding: '12px', background: 'var(--brand-light)', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--brand)' }}>Job Match Score</span>
+                      <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--brand)' }}>{analysis.job_match_score}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {results.map((c, i) => (
-              <div className={`rank-card ${i === 0 ? 'top' : ''}`} key={i}>
-                <div className="rank-header">
-                  <div className="rank-left">
-                    <div className="rank-number">#{i + 1}</div>
-                    <div>
-                      <div className="rank-name">{c.filename}</div>
-                      {i === 0 && <span className="top-badge">⭐ Best Fit</span>}
+            <div className="card-grid-2" style={{ marginBottom: '24px' }}>
+              <div className="card">
+                <div className="section-label">Detailed Breakdown</div>
+                {Object.entries(analysis.score_breakdown).map(([key, value]) => (
+                  <div className="progress-row" key={key}>
+                    <div className="progress-meta">
+                      <span>{key}</span>
+                      <span>{value}/25</span>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${(value / 25) * 100}%` }} />
                     </div>
                   </div>
-                  <div className="rank-score" style={{ color: scoreColor(c.match_score) }}>
-                    {c.match_score}%
-                  </div>
-                </div>
+                ))}
+              </div>
 
-                <div className="card" style={{ background: 'rgba(0,0,0,0.02)', padding: '20px', border: 'none', marginBottom: '20px' }}>
-                  <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.7' }}>
-                    <strong style={{ color: 'var(--text)' }}>AI Analysis: </strong>{c.reasoning}
-                  </p>
-                </div>
+              <div className="card">
+                <div className="section-label">Formatting Feedback</div>
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.6' }}>{analysis.formatting_feedback}</p>
+              </div>
+            </div>
 
-                <div className="card-grid-2">
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--success)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Matching Skills</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                      {c.matching_skills.map((s, j) => <span key={j} className="tag tag-success">{s}</span>)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--danger)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skill Gaps</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                      {c.missing_skills.map((s, j) => <span key={j} className="tag tag-danger">{s}</span>)}
-                    </div>
-                  </div>
+            <div className="card-grid-2" style={{ marginBottom: '24px' }}>
+              <div className="card">
+                <div className="section-label" style={{ color: 'var(--success)' }}>Strengths</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {analysis.strengths.map((s, i) => <span key={i} className="tag tag-success">{s}</span>)}
                 </div>
               </div>
-            ))}
+              <div className="card">
+                <div className="section-label" style={{ color: 'var(--danger)' }}>Gaps & Weaknesses</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {analysis.weaknesses.map((w, i) => <span key={i} className="tag tag-danger">{w}</span>)}
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="section-label">Improvement Suggestions</div>
+              <ul style={{ paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '14px' }}>
+                {analysis.improvement_suggestions.map((s, i) => (
+                  <li key={i} style={{ marginBottom: '8px' }}>{s}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
       </div>
@@ -182,4 +195,4 @@ function Recruiter() {
   )
 }
 
-export default Recruiter
+export default Candidate
