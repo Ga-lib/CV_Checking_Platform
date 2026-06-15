@@ -21,7 +21,7 @@ function Candidate() {
       formData.append('jobDescription', jobDescription)
     }
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://cv-checking-platform.onrender.com/'
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://cv-checking-platform.onrender.com'
       const response = await axios.post(`${apiUrl}/analyse`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
