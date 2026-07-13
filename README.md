@@ -11,7 +11,7 @@ CVGenius is a full-stack web application designed to automate, streamline, and o
 
 
 ## ✨ Features: 
-Automated CV Parsing: Extracts layout structure, text details, and key metrics.
-Real-time Scoring: Evaluates resume quality against common industry benchmarks.
-Keyword Optimization: Identifies missing skills and technical gaps based on target roles.
-Intuitive UI/UX: Features a polished, user-friendly interactive interface.
+* Automated CV Parsing: Extracts layout structure, text details, and key metrics.
+* Real-time Scoring: Evaluates resume quality against common industry benchmarks.
+* Keyword Optimization: Identifies missing skills and technical gaps based on target roles.
+* Intuitive UI/UX: Features a polished, user-friendly interactive interface.
